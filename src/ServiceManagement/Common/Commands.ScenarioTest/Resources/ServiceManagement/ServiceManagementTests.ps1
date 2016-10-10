@@ -673,7 +673,8 @@ function Test-MigrationAbortAzureDeployment
     New-AzureQuickVM -Windows -ImageName $imgName -Name $vmName -ServiceName $svcName -AdminUsername "pstestuser" -Password $PLACEHOLDER -WaitForBoot;
     Get-AzureVM -ServiceName $svcName -Name $vmName;
 
-    Move-AzureService -Validate -ServiceName $svcName -DeploymentName $svcName -CreateNewVirtualNetwork;
+    $result = Move-AzureService -Validate -ServiceName $svcName -DeploymentName $svcName -CreateNewVirtualNetwork;
+    Assert-AreEqual "Succeeded" $result.Result;
     $vm = Get-AzureVM -ServiceName $svcName -Name $vmName;
 
     Move-AzureService -Prepare -ServiceName $svcName -DeploymentName $svcName -CreateNewVirtualNetwork;
@@ -686,6 +687,33 @@ function Test-MigrationAbortAzureDeployment
 
     # Cleanup
     Cleanup-CloudService $svcName;
+}
+
+<#
+.SYNOPSIS
+Tests Move-AzureService with Abort
+#>
+function Test-MigrationValidateAzureDeployment
+{
+    # Setup
+    $location = Get-DefaultLocation;
+    $imgName = Get-DefaultImage $location;
+
+    $storageName = getAssetName;
+    New-AzureStorageAccount -StorageAccountName $storageName -Location $location;
+    Set-CurrentStorageAccountName $storageName;
+
+    $vmName = "vm1";
+    $svcName = Get-CloudServiceName;
+
+    # Test
+    New-AzureService -ServiceName $svcName -Location $location;
+    New-AzureQuickVM -Windows -ImageName $imgName -Name $vmName -ServiceName $svcName -AdminUsername "pstestuser" -Password $PLACEHOLDER;
+    Get-AzureVM -ServiceName $svcName -Name $vmName;
+
+    $result = Move-AzureService -Validate -ServiceName $svcName -DeploymentName $svcName -CreateNewVirtualNetwork;
+    Assert-AreNotEqual "Succeeded" $result.Result;
+    Assert-AreNotEqual 0 $result.ValidationMessages.Count;
 }
 
 <#
@@ -737,7 +765,8 @@ function Test-MigrationAbortAzureVNet
     Set-AzureVNetConfig -ConfigurationPath $vnetConfigPath;
     Get-AzureVNetSite;
 
-    Move-AzureVirtualNetwork -Validate -VirtualNetworkName $vnetName;
+    $result = Move-AzureVirtualNetwork -Validate -VirtualNetworkName $vnetName;
+    Assert-AreEqual "Succeeded" $result.Result;
     Get-AzureVNetSite;
 
     Move-AzureVirtualNetwork -Prepare -VirtualNetworkName $vnetName;
@@ -783,7 +812,8 @@ function Test-MigrationAbortAzureStorageAccount
     Get-AzureStorageAccount -StorageAccountName $storageName;
 
     # Test
-    Move-AzureStorageAccount -Validate -StorageAccountName $storageName;
+    $result = Move-AzureStorageAccount -Validate -StorageAccountName $storageName;
+    Assert-AreEqual "Succeeded" $result.Result;
     Get-AzureStorageAccount -StorageAccountName $storageName;
 
     Move-AzureStorageAccount -Prepare -StorageAccountName $storageName;
@@ -796,6 +826,91 @@ function Test-MigrationAbortAzureStorageAccount
     Remove-AzureStorageAccount -StorageAccountName $storageName;
 }
 
+<#
+.SYNOPSIS
+Tests Move-AzureNetworkSecurityGroup
+#>
+function Test-MigrationNetworkSecurityGroup
+{
+    # Setup
+    $securityGroupName = getAssetName
+    $location = Get-DefaultLocation
+    New-AzureNetworkSecurityGroup -Name $securityGroupName -location $location
+
+    # Validate move
+    $status = Move-AzureNetworkSecurityGroup -NetworkSecurityGroupName $securityGroupName -Validate
+    Assert-NotNull $status
+    Assert-Null $status.ValidationMessages
+
+    # Prepare move
+    Move-AzureNetworkSecurityGroup -NetworkSecurityGroupName $securityGroupName -Prepare
+
+    # Abort Move
+    Move-AzureNetworkSecurityGroup -NetworkSecurityGroupName $securityGroupName -Abort
+
+    # Remove
+    $isDeleted = Remove-AzureNetworkSecurityGroup -Name $securityGroupName -Force -PassThru
+}
+
+<#
+.SYNOPSIS
+Tests Move-AzureRouteTable
+#>
+function Test-MigrationRouteTable
+{
+    # Setup
+    $routeTableName = getAssetName
+    $location = Get-DefaultLocation
+    New-AzureRouteTable -Name $routeTableName -location $location
+
+    # Validate move
+    $status = Move-AzureRouteTable -RouteTableName $routeTableName -Validate
+    Assert-NotNull $status
+    Assert-Null $status.ValidationMessages
+
+    # Prepare move
+    Move-AzureRouteTable -RouteTableName $routeTableName -Prepare
+
+    # Abort Move
+    Move-AzureRouteTable -RouteTableName $routeTableName -Abort
+
+    # Remove
+    $isDeleted = Remove-AzureRouteTable -Name $routeTableName -Force -PassThru
+}
+
+<#
+.SYNOPSIS
+Tests Move-AzureReservedIP
+#>
+function Test-MigrationAzureReservedIP
+{
+    # Setup
+    $name = getAssetName
+    $location = Get-DefaultLocation
+
+    # Test Create Reserved IP
+    New-AzureReservedIP -ReservedIPName $name -Location $location
+    $reservedIP = Get-AzureReservedIP -ReservedIPName $name
+
+    # Assert
+    Assert-NotNull($reservedIP)
+    Assert-AreEqual $reservedIP.Location $location
+    
+    # Validate move
+    $status = Move-AzureReservedIP -ReservedIPName $name -Validate
+    Assert-NotNull $status
+    Assert-Null $status.ValidationMessages
+
+    # Prepare move
+    Move-AzureReservedIP -ReservedIPName $name -Prepare
+
+    # Abort Move
+    Move-AzureReservedIP -ReservedIPName $name -Abort
+
+    #Test Remove reserved IP
+    $removeReservedIP = Remove-AzureReservedIP -ReservedIPName $name -Force
+    Assert-AreEqual $removeReservedIP.OperationStatus "Succeeded"
+}
 
 function Test-NewAzureVMWithBYOL
 {

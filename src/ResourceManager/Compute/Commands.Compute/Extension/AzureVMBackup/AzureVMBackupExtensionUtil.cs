@@ -38,7 +38,7 @@ namespace Microsoft.Azure.Commands.Compute.Extension.AzureVMBackup
     /// </summary>
     public class AzureVMBackupExtensionUtil
     {
-        public const string extensionPublisher = "Microsoft.OSTCExtensions";
+        public const string extensionPublisher = "Microsoft.Azure.Security";
         public const string extensionType = "VMBackupForLinuxExtension";
         public const string extensionDefaultVersion = "0.1";
         public const string backupExtensionName = "vmbackupextension";
@@ -162,7 +162,7 @@ namespace Microsoft.Azure.Commands.Compute.Extension.AzureVMBackup
         public void RemoveSnapshot(AzureVMBackupConfig vmConfig, string snapshotTag, VirtualMachineExtensionBaseCmdlet virtualMachineExtensionBaseCmdlet)
         {
             var virtualMachineResponse = virtualMachineExtensionBaseCmdlet.ComputeClient.ComputeManagementClient.VirtualMachines.GetWithInstanceView(vmConfig.ResourceGroupName, vmConfig.VMName);
-            StorageManagementClient storageClient = AzureSession.ClientFactory.CreateClient<StorageManagementClient>(virtualMachineExtensionBaseCmdlet.DefaultProfile.Context, AzureEnvironment.Endpoint.ResourceManager);
+            StorageManagementClient storageClient = AzureSession.ClientFactory.CreateArmClient<StorageManagementClient>(virtualMachineExtensionBaseCmdlet.DefaultProfile.Context, AzureEnvironment.Endpoint.ResourceManager);
 
             StorageCredentialsFactory storageCredentialsFactory = new StorageCredentialsFactory(vmConfig.ResourceGroupName, storageClient, virtualMachineExtensionBaseCmdlet.DefaultProfile.Context.Subscription);
 
@@ -200,7 +200,7 @@ namespace Microsoft.Azure.Commands.Compute.Extension.AzureVMBackup
             var virtualMachine = virtualMachineExtensionBaseCmdlet.ComputeClient.ComputeManagementClient.VirtualMachines.GetWithInstanceView(
                 vmConfig.ResourceGroupName,
                 vmConfig.VMName);
-            StorageManagementClient storageClient = AzureSession.ClientFactory.CreateClient<StorageManagementClient>(virtualMachineExtensionBaseCmdlet.DefaultProfile.Context, AzureEnvironment.Endpoint.ResourceManager);
+            StorageManagementClient storageClient = AzureSession.ClientFactory.CreateArmClient<StorageManagementClient>(virtualMachineExtensionBaseCmdlet.DefaultProfile.Context, AzureEnvironment.Endpoint.ResourceManager);
 
             StorageCredentialsFactory storageCredentialsFactory = new StorageCredentialsFactory(vmConfig.ResourceGroupName, storageClient, virtualMachineExtensionBaseCmdlet.DefaultProfile.Context.Subscription);
 
