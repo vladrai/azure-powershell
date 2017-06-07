@@ -36,6 +36,7 @@ using Microsoft.WindowsAzure.Commands.Utilities.Common;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using ProjectResources = Microsoft.Azure.Commands.ResourceManager.Cmdlets.Properties.Resources;
+using Microsoft.Azure.Commands.Common.Authentication.Abstractions;
 
 namespace Microsoft.Azure.Commands.ResourceManager.Cmdlets.SdkClient
 {
@@ -81,9 +82,9 @@ namespace Microsoft.Azure.Commands.ResourceManager.Cmdlets.SdkClient
         /// Creates new ResourceManagementClient
         /// </summary>
         /// <param name="context">Profile containing resources to manipulate</param>
-        public ResourceManagerSdkClient(AzureContext context)
+        public ResourceManagerSdkClient(IAzureContext context)
             : this(
-                AzureSession.ClientFactory.CreateArmClient<ResourceManagementClient>(context, AzureEnvironment.Endpoint.ResourceManager))
+                AzureSession.Instance.ClientFactory.CreateArmClient<ResourceManagementClient>(context, AzureEnvironment.Endpoint.ResourceManager))
         {
 
         }
@@ -314,7 +315,8 @@ namespace Microsoft.Azure.Commands.ResourceManager.Cmdlets.SdkClient
         {
             DeploymentExtended deployment;
 
-            // Poll deployment state and deployment operations with two phases. In phase one, poll every 5 seconds. Phase one 
+            // Poll deployment state and deployment operations after RetryAfter.
+            // If no RetryAfter provided: In phase one, poll every 5 seconds. Phase one 
             // takes 400 seconds. In phase two, poll every 60 seconds. 
             const int counterUnit = 1000;
             int step = 5;
@@ -335,10 +337,19 @@ namespace Microsoft.Azure.Commands.ResourceManager.Cmdlets.SdkClient
                     job(resourceGroup, deploymentName, basicDeployment);
                 }
 
-                deployment = ResourceManagementClient.Deployments.Get(resourceGroup, deploymentName);
-
-                step = phaseOne > 0 ? 5 : 60;
-
+                using (var getResult = ResourceManagementClient.Deployments.GetWithHttpMessagesAsync(resourceGroup, deploymentName).ConfigureAwait(false).GetAwaiter().GetResult())
+                {
+                    deployment = getResult.Body;
+                    var response = getResult.Response;
+                    if (response != null && response.Headers.RetryAfter != null && response.Headers.RetryAfter.Delta.HasValue)
+                    {
+                        step = response.Headers.RetryAfter.Delta.Value.Seconds;
+                    }
+                    else
+                    {
+                        step = phaseOne > 0 ? 5 : 60;
+                    }
+                }
             } while (!status.Any(s => s.ToString().Equals(deployment.Properties.ProvisioningState, StringComparison.OrdinalIgnoreCase)));
 
             return deployment;
@@ -535,7 +546,7 @@ namespace Microsoft.Azure.Commands.ResourceManager.Cmdlets.SdkClient
         /// <param name="parameters">The create parameters</param>
         public virtual PSResourceGroup CreatePSResourceGroup(PSCreateResourceGroupParameters parameters)
         {
-            bool resourceExists = ResourceManagementClient.ResourceGroups.CheckExistence(parameters.ResourceGroupName).Value;
+            bool resourceExists = ResourceManagementClient.ResourceGroups.CheckExistence(parameters.ResourceGroupName);
 
             ResourceGroup resourceGroup = null;
             parameters.ConfirmAction(parameters.Force,
@@ -549,7 +560,7 @@ namespace Microsoft.Azure.Commands.ResourceManager.Cmdlets.SdkClient
                 },
                 () => resourceExists);
 
-            return  resourceGroup !=  null? resourceGroup.ToPSResourceGroup() : null;
+            return resourceGroup != null ? resourceGroup.ToPSResourceGroup() : null;
         }
 
         /// <summary>
@@ -558,7 +569,7 @@ namespace Microsoft.Azure.Commands.ResourceManager.Cmdlets.SdkClient
         /// <param name="parameters">The create parameters</param>
         public virtual PSResourceGroup UpdatePSResourceGroup(PSUpdateResourceGroupParameters parameters)
         {
-            if (!ResourceManagementClient.ResourceGroups.CheckExistence(parameters.ResourceGroupName).Value)
+            if (!ResourceManagementClient.ResourceGroups.CheckExistence(parameters.ResourceGroupName))
             {
                 WriteError(ProjectResources.ResourceGroupDoesntExists);
                 return null;
@@ -650,7 +661,7 @@ namespace Microsoft.Azure.Commands.ResourceManager.Cmdlets.SdkClient
         /// <param name="name">The resource group name</param>
         public virtual void DeleteResourceGroup(string name)
         {
-            if (!ResourceManagementClient.ResourceGroups.CheckExistence(name).Value)
+            if (!ResourceManagementClient.ResourceGroups.CheckExistence(name))
             {
                 WriteError(ProjectResources.ResourceGroupDoesntExists);
             }
@@ -678,13 +689,13 @@ namespace Microsoft.Azure.Commands.ResourceManager.Cmdlets.SdkClient
             }
             else if (!string.IsNullOrEmpty(resourceGroup))
             {
-                var result = ResourceManagementClient.Deployments.List(resourceGroup, null);
+                var result = ResourceManagementClient.Deployments.ListByResourceGroup(resourceGroup, null);
 
                 deployments.AddRange(result.Select(d => d.ToPSResourceGroupDeployment(options.ResourceGroupName)));
 
                 while (!string.IsNullOrEmpty(result.NextPageLink))
                 {
-                    result = ResourceManagementClient.Deployments.ListNext(result.NextPageLink);
+                    result = ResourceManagementClient.Deployments.ListByResourceGroupNext(result.NextPageLink);
                     deployments.AddRange(result.Select(d => d.ToPSResourceGroupDeployment(options.ResourceGroupName)));
                 }
             }
@@ -773,7 +784,7 @@ namespace Microsoft.Azure.Commands.ResourceManager.Cmdlets.SdkClient
         /// <param name="deploymentName">Deployment name</param>
         public virtual void DeleteDeployment(string resourceGroup, string deploymentName)
         {
-            if (!ResourceManagementClient.Deployments.CheckExistence(resourceGroup, deploymentName).Value)
+            if (!ResourceManagementClient.Deployments.CheckExistence(resourceGroup, deploymentName))
             {
                 throw new ArgumentException(string.Format(ProjectResources.DeploymentDoesntExist, deploymentName, resourceGroup));
             }

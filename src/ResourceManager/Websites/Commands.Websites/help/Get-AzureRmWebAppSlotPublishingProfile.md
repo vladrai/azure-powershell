@@ -1,5 +1,6 @@
 ---
 external help file: Microsoft.Azure.Commands.Websites.dll-Help.xml
+ms.assetid: B2FDB54F-0318-4037-BC1D-6113E77DDE7E
 online version: 
 schema: 2.0.0
 ---
@@ -7,18 +8,20 @@ schema: 2.0.0
 # Get-AzureRmWebAppSlotPublishingProfile
 
 ## SYNOPSIS
+Gets an Azure Web App slot publishing profile.
 
 ## SYNTAX
 
 ### S1
 ```
 Get-AzureRmWebAppSlotPublishingProfile [-OutputFile] <String> [[-Format] <String>]
- [-ResourceGroupName] <String> [-Name] <String> [-Slot] <String>
+ [-ResourceGroupName] <String> [-Name] <String> [-Slot] <String> [<CommonParameters>]
 ```
 
 ### S2
 ```
 Get-AzureRmWebAppSlotPublishingProfile [-OutputFile] <String> [[-Format] <String>] [-WebApp] <Site>
+ [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -43,6 +46,7 @@ Format
 Type: String
 Parameter Sets: (All)
 Aliases: 
+Accepted values: WebDeploy, FileZilla3, Ftp
 
 Required: False
 Position: 4
@@ -126,6 +130,9 @@ Accept pipeline input: True (ByValue)
 Accept wildcard characters: False
 ```
 
+### CommonParameters
+This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable, -InformationAction, -InformationVariable, -OutVariable, -OutBuffer, -PipelineVariable, -Verbose, -WarningAction, and -WarningVariable. For more information, see about_CommonParameters (http://go.microsoft.com/fwlink/?LinkID=113216).
+
 ## INPUTS
 
 ## OUTPUTS
@@ -134,3 +141,8 @@ Accept wildcard characters: False
 
 ## RELATED LINKS
 
+[Reset-AzureRMWebAppSlotPublishingProfile](./Reset-AzureRmWebAppSlotPublishingProfile.md)
+
+[Get-AzureRMWebAppSlot](./Get-AzureRMWebAppSlot.md)
+
+[Get-AzureRmWebApp](./Get-AzureRmWebApp.md)

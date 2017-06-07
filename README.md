@@ -1,4 +1,5 @@
 <meta name="google-site-verification" content="tZgbB2s-hTI0IePQQRCjHqL_Vf0j_XJmehXAHJerrn4" />
+
 # Microsoft Azure PowerShell
 
 This repository contains a set of PowerShell cmdlets for developers and administrators to develop, deploy and manage Microsoft Azure applications.
@@ -6,6 +7,7 @@ This repository contains a set of PowerShell cmdlets for developers and administ
 * For documentation on how to build and deploy applications to Microsoft Azure please see the [Microsoft Azure Documentation Center](https://azure.microsoft.com/en-us/documentation/).
 * For comprehensive documentation on the developer cmdlets see [How to install and configure Azure PowerShell](https://azure.microsoft.com/en-us/documentation/articles/install-configure-powershell/).
 * For comprehensive documentation on the full set of Microsoft Azure cmdlets see [Microsoft Azure Management Center](http://go.microsoft.com/fwlink/?linkID=254459&clcid=0x409).
+* For suggesting improvements, join our improvement discussion ([#3692](https://github.com/Azure/azure-powershell/issues/3692)).
 
 ## Features
 
@@ -22,6 +24,8 @@ This repository contains a set of PowerShell cmdlets for developers and administ
   * App Service (Websites)
   * SQL Database
   * KeyVault
+  * Data Lake Store
+  * Data Lake Analytics
   * Operational Insights
   * Automation
   * Batch
@@ -36,7 +40,7 @@ This repository contains a set of PowerShell cmdlets for developers and administ
   * Scheduler
   * StorSimple
   * Redis Cache
- 
+
 * Windows Azure Pack
   * Web Site: CRUD web site, deployment, configure and get log, start/stop/restart/show web site
   * Service Bus: CRD namespace
@@ -46,7 +50,7 @@ This repository contains a set of PowerShell cmdlets for developers and administ
 * Windows Azure Stack
   * Azure Stack Administration
   * Storage Service Management
-  
+
 
 For detail descriptions and examples of the cmdlets, type
 * ```help azure``` to get all the cmdlets.
@@ -92,7 +96,7 @@ You can also find the standalone installers for all the versions at [Downloads](
 
 In general, follow these steps to start using Microsoft Azure PowerShell
 
-* Get yourself authenticated with Microsoft Azure. For details, please check out [this article](https://azure.microsoft.com/en-us/documentation/articles/install-configure-powershell/).
+* Get yourself authenticated with Microsoft Azure. For details, please check out [this article](https://docs.microsoft.com/powershell/azureps-cmdlets-docs/).
   * Option 1: Login with your Microsoft account or Organizational account directly from PowerShell. Microsoft Azure Active Directory authentication is used in this case. No management certificate is needed.
       * Starting from 1.0.0, you can use ```Add-AzureRmAccount -Credential``` to avoid the browser pop up for Organizational account.
       * To use RDFE cmdlets, use ```Add-AzureAccount```
@@ -191,6 +195,8 @@ Be sure to check out the [Microsoft Azure Developer Forums on Stack Overflow](ht
 ## Contribute Code or Provide Feedback
 
 If you would like to become an active contributor to this project please follow the instructions provided in [Microsoft Azure Projects Contribution Guidelines](https://azure.github.io/guidelines/).
+
+More information about contributing to this repo can be found in [CONTRIBUTING md](https://github.com/Azure/azure-powershell/blob/preview/CONTRIBUTING.md) and the [Documentation](https://github.com/Azure/azure-powershell/tree/preview/documentation) folder.
 
 If you encounter any bugs with the library please file an issue in the [Issues](https://github.com/Azure/azure-powershell/issues) section of the project.
 

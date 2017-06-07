@@ -12,10 +12,9 @@
 // limitations under the License.
 // ----------------------------------------------------------------------------------
 
-using Microsoft.Azure.Commands.Common.Authentication.Models;
-using Microsoft.Azure.Commands.Common.Authentication.Properties;
+using Microsoft.Azure.Commands.Common.Authentication.Abstractions;
 using Microsoft.Azure.Commands.ResourceManager.Common.Tags;
-using Microsoft.Azure.Management.DataLake.Analytics;
+using Microsoft.Azure.Commands.DataLakeAnalytics.Properties;
 using Microsoft.Azure.Management.DataLake.Analytics.Models;
 using Microsoft.Rest.Azure;
 using Microsoft.Rest.Azure.OData;
@@ -23,7 +22,9 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Management.Automation;
 using System.Net;
+using Microsoft.Azure.Management.DataLake.Analytics;
 
 namespace Microsoft.Azure.Commands.DataLakeAnalytics.Models
 {
@@ -56,7 +57,7 @@ namespace Microsoft.Azure.Commands.DataLakeAnalytics.Models
             set { jobIdQueue = value; }
         }
 
-        public DataLakeAnalyticsClient(AzureContext context)
+        public DataLakeAnalyticsClient(IAzureContext context)
         {
             if (context == null)
             {
@@ -65,7 +66,7 @@ namespace Microsoft.Azure.Commands.DataLakeAnalytics.Models
             
             _accountClient = DataLakeAnalyticsCmdletBase.CreateAdlaClient<DataLakeAnalyticsAccountManagementClient>(context,
                 AzureEnvironment.Endpoint.ResourceManager);
-            _subscriptionId = context.Subscription.Id;
+            _subscriptionId = context.Subscription.GetId();
 
             _jobClient = DataLakeAnalyticsCmdletBase.CreateAdlaClient<DataLakeAnalyticsJobManagementClient>(context,
                 AzureEnvironment.Endpoint.AzureDataLakeAnalyticsCatalogAndJobEndpointSuffix, true);
@@ -84,7 +85,10 @@ namespace Microsoft.Azure.Commands.DataLakeAnalytics.Models
             Hashtable customTags = null,
             int? maxDegreeOfParallelism = 0,
             int? maxJobCount = 0,
-            int? queryStoreRetention = 0)
+            int? queryStoreRetention = 0,
+            TierType? tier = null,
+            FirewallState? firewallState = null,
+            FirewallAllowAzureIpsState? allowAzureIps = null)
         {
             if (string.IsNullOrEmpty(resourceGroupName))
             {
@@ -142,6 +146,21 @@ namespace Microsoft.Azure.Commands.DataLakeAnalytics.Models
                 parameters.QueryStoreRetention = queryStoreRetention;
             }
 
+            if (tier.HasValue)
+            {
+                parameters.NewTier = tier;
+            }
+
+            if (firewallState.HasValue)
+            {
+                parameters.FirewallState = firewallState;
+            }
+
+            if (allowAzureIps.HasValue)
+            {
+                parameters.FirewallAllowAzureIps = allowAzureIps;
+            }
+
             var accountExists = false;
             try
             {
@@ -162,7 +181,10 @@ namespace Microsoft.Azure.Commands.DataLakeAnalytics.Models
                     MaxDegreeOfParallelism = parameters.MaxDegreeOfParallelism,
                     MaxJobCount = parameters.MaxJobCount,
                     QueryStoreRetention = parameters.QueryStoreRetention,
-                    Tags = parameters.Tags
+                    Tags = parameters.Tags,
+                    NewTier = parameters.NewTier,
+                    FirewallState = parameters.FirewallState,
+                    FirewallAllowAzureIps = parameters.FirewallAllowAzureIps
                 })
                 : _accountClient.Account.Create(resourceGroupName, accountName, parameters);
         }
@@ -390,6 +412,79 @@ namespace Microsoft.Azure.Commands.DataLakeAnalytics.Models
         }
 
         #endregion
+        #region Firewall Management
+
+        public FirewallRule AddOrUpdateFirewallRule(string resourceGroupName, string accountName, string ruleName, string startIp, string endIp, Cmdlet runningCommand)
+        {
+            if (string.IsNullOrEmpty(resourceGroupName))
+            {
+                resourceGroupName = GetResourceGroupByAccountName(accountName);
+            }
+
+            if (_accountClient.Account.Get(resourceGroupName, accountName).FirewallState == FirewallState.Disabled)
+            {
+                runningCommand.WriteWarning(string.Format(Properties.Resources.FirewallDisabledWarning, accountName));
+            }
+
+            return _accountClient.FirewallRules.CreateOrUpdate(
+                resourceGroupName,
+                accountName,
+                ruleName,
+                new FirewallRule
+                {
+                    StartIpAddress = startIp,
+                    EndIpAddress = endIp
+
+                });
+        }
+
+        public void DeleteFirewallRule(string resourceGroupName, string accountName, string ruleName, Cmdlet runningCommand)
+        {
+            if (string.IsNullOrEmpty(resourceGroupName))
+            {
+                resourceGroupName = GetResourceGroupByAccountName(accountName);
+            }
+
+            if (_accountClient.Account.Get(resourceGroupName, accountName).FirewallState == FirewallState.Disabled)
+            {
+                runningCommand.WriteWarning(string.Format(Properties.Resources.FirewallDisabledWarning, accountName));
+            }
+
+            _accountClient.FirewallRules.Delete(resourceGroupName, accountName, ruleName);
+        }
+
+        public FirewallRule GetFirewallRule(string resourceGroupName, string accountName, string ruleName)
+        {
+            if (string.IsNullOrEmpty(resourceGroupName))
+            {
+                resourceGroupName = GetResourceGroupByAccountName(accountName);
+            }
+
+            return _accountClient.FirewallRules.Get(resourceGroupName, accountName, ruleName);
+        }
+
+        public List<FirewallRule> ListFirewallRules(string resourceGroupName, string accountName)
+        {
+            if (string.IsNullOrEmpty(resourceGroupName))
+            {
+                resourceGroupName = GetResourceGroupByAccountName(accountName);
+            }
+
+            var toReturn = new List<FirewallRule>();
+            var response = _accountClient.FirewallRules.ListByAccount(resourceGroupName, accountName);
+
+            toReturn.AddRange(response);
+
+            while (!string.IsNullOrEmpty(response.NextPageLink))
+            {
+                response = ListFirewallRulesWithNextLink(response.NextPageLink);
+                toReturn.AddRange(response);
+            }
+
+            return toReturn;
+        }
+
+        #endregion
 
         #region Catalog Operations
 
@@ -407,12 +502,15 @@ namespace Microsoft.Azure.Commands.DataLakeAnalytics.Models
         public USqlSecret UpdateSecret(string accountName, string databaseName,
             string secretName, string password, string hostUri)
         {
-            return _catalogClient.Catalog.UpdateSecret(accountName, databaseName, secretName,
+            _catalogClient.Catalog.UpdateSecret(accountName, databaseName, secretName,
                 new DataLakeAnalyticsCatalogSecretCreateOrUpdateParameters
                 {
                     Password = password,
                     Uri = hostUri
                 });
+
+            // TODO: Remove this during the next breaking change release.
+            return null;
         }
 
         public void DeleteSecret(string accountName, string databaseName, string secretName)
@@ -626,6 +724,20 @@ namespace Microsoft.Azure.Commands.DataLakeAnalytics.Models
 
                     break;
 
+                case DataLakeAnalyticsEnums.CatalogItemType.Package:
+                    if (isList)
+                    {
+                        toReturn.AddRange(GetPackages(accountName, path.DatabaseName,
+                            path.SchemaAssemblyOrExternalDataSourceName));
+                    }
+                    else
+                    {
+                        toReturn.Add(GetPackage(accountName, path.DatabaseName,
+                            path.SchemaAssemblyOrExternalDataSourceName, path.TableOrTableValuedFunctionName));
+                    }
+
+                    break;
+
                 case DataLakeAnalyticsEnums.CatalogItemType.Procedure:
                     if (isList)
                     {
@@ -785,14 +897,26 @@ namespace Microsoft.Azure.Commands.DataLakeAnalytics.Models
             string schemaName)
         {
             List<USqlTable> toReturn = new List<USqlTable>();
-            var response = _catalogClient.Catalog.ListTables(accountName, databaseName, schemaName);
-            toReturn.AddRange(response);
-            while (!string.IsNullOrEmpty(response.NextPageLink))
+            if (string.IsNullOrEmpty(schemaName))
             {
-                response = _catalogClient.Catalog.ListTablesNext(response.NextPageLink);
+                var response = _catalogClient.Catalog.ListTablesByDatabase(accountName, databaseName);
                 toReturn.AddRange(response);
+                while (!string.IsNullOrEmpty(response.NextPageLink))
+                {
+                    response = _catalogClient.Catalog.ListTablesByDatabaseNext(response.NextPageLink);
+                    toReturn.AddRange(response);
+                }
             }
-
+            else
+            {
+                var response = _catalogClient.Catalog.ListTables(accountName, databaseName, schemaName);
+                toReturn.AddRange(response);
+                while (!string.IsNullOrEmpty(response.NextPageLink))
+                {
+                    response = _catalogClient.Catalog.ListTablesNext(response.NextPageLink);
+                    toReturn.AddRange(response);
+                }
+            }
             return toReturn;
         }
 
@@ -830,14 +954,26 @@ namespace Microsoft.Azure.Commands.DataLakeAnalytics.Models
             string databaseName, string schemaName)
         {
             List<USqlTableValuedFunction> toReturn = new List<USqlTableValuedFunction>();
-            var response = _catalogClient.Catalog.ListTableValuedFunctions(accountName, databaseName, schemaName);
-            toReturn.AddRange(response);
-            while (!string.IsNullOrEmpty(response.NextPageLink))
+            if (string.IsNullOrEmpty(schemaName))
             {
-                response = _catalogClient.Catalog.ListTableValuedFunctionsNext(response.NextPageLink);
+                var response = _catalogClient.Catalog.ListTableValuedFunctionsByDatabase(accountName, databaseName);
                 toReturn.AddRange(response);
+                while (!string.IsNullOrEmpty(response.NextPageLink))
+                {
+                    response = _catalogClient.Catalog.ListTableValuedFunctionsByDatabaseNext(response.NextPageLink);
+                    toReturn.AddRange(response);
+                }
             }
-
+            else
+            {
+                var response = _catalogClient.Catalog.ListTableValuedFunctions(accountName, databaseName, schemaName);
+                toReturn.AddRange(response);
+                while (!string.IsNullOrEmpty(response.NextPageLink))
+                {
+                    response = _catalogClient.Catalog.ListTableValuedFunctionsNext(response.NextPageLink);
+                    toReturn.AddRange(response);
+                }
+            }
             return toReturn;
         }
 
@@ -853,14 +989,36 @@ namespace Microsoft.Azure.Commands.DataLakeAnalytics.Models
             string databaseName, string schemaName, string tableName)
         {
             List<USqlTableStatistics> toReturn = new List<USqlTableStatistics>();
-            var response = _catalogClient.Catalog.ListTableStatistics(accountName, databaseName, schemaName, tableName);
-            toReturn.AddRange(response);
-            while (!string.IsNullOrEmpty(response.NextPageLink))
+            if (string.IsNullOrEmpty(schemaName) && string.IsNullOrEmpty(tableName))
             {
-                response = _catalogClient.Catalog.ListTableStatisticsNext(response.NextPageLink);
+                var response = _catalogClient.Catalog.ListTableStatisticsByDatabase(accountName, databaseName);
                 toReturn.AddRange(response);
+                while (!string.IsNullOrEmpty(response.NextPageLink))
+                {
+                    response = _catalogClient.Catalog.ListTableStatisticsByDatabaseNext(response.NextPageLink);
+                    toReturn.AddRange(response);
+                }
             }
-
+            else if (!string.IsNullOrEmpty(schemaName) && string.IsNullOrEmpty(tableName))
+            {
+                var response = _catalogClient.Catalog.ListTableStatisticsByDatabaseAndSchema(accountName, databaseName, schemaName);
+                toReturn.AddRange(response);
+                while (!string.IsNullOrEmpty(response.NextPageLink))
+                {
+                    response = _catalogClient.Catalog.ListTableStatisticsByDatabaseAndSchemaNext(response.NextPageLink);
+                    toReturn.AddRange(response);
+                }
+            }
+            else
+            {
+                var response = _catalogClient.Catalog.ListTableStatistics(accountName, databaseName, schemaName, tableName);
+                toReturn.AddRange(response);
+                while (!string.IsNullOrEmpty(response.NextPageLink))
+                {
+                    response = _catalogClient.Catalog.ListTableStatisticsNext(response.NextPageLink);
+                    toReturn.AddRange(response);
+                }
+            }
             return toReturn;
         }
 
@@ -875,12 +1033,25 @@ namespace Microsoft.Azure.Commands.DataLakeAnalytics.Models
             string schemaName)
         {
             List<USqlView> toReturn = new List<USqlView>();
-            var response = _catalogClient.Catalog.ListViews(accountName, databaseName, schemaName);
-            toReturn.AddRange(response);
-            while (!string.IsNullOrEmpty(response.NextPageLink))
+            if (string.IsNullOrEmpty(schemaName))
             {
-                response = _catalogClient.Catalog.ListViewsNext(response.NextPageLink);
+                var response = _catalogClient.Catalog.ListViewsByDatabase(accountName, databaseName);
                 toReturn.AddRange(response);
+                while (!string.IsNullOrEmpty(response.NextPageLink))
+                {
+                    response = _catalogClient.Catalog.ListViewsByDatabaseNext(response.NextPageLink);
+                    toReturn.AddRange(response);
+                }
+            }
+            else
+            {
+                var response = _catalogClient.Catalog.ListViews(accountName, databaseName, schemaName);
+                toReturn.AddRange(response);
+                while (!string.IsNullOrEmpty(response.NextPageLink))
+                {
+                    response = _catalogClient.Catalog.ListViewsNext(response.NextPageLink);
+                    toReturn.AddRange(response);
+                }
             }
 
             return toReturn;
@@ -902,6 +1073,28 @@ namespace Microsoft.Azure.Commands.DataLakeAnalytics.Models
             while (!string.IsNullOrEmpty(response.NextPageLink))
             {
                 response = _catalogClient.Catalog.ListProceduresNext(response.NextPageLink);
+                toReturn.AddRange(response);
+            }
+
+            return toReturn;
+        }
+
+        private USqlPackage GetPackage(string accountName, string databaseName, string schemaName,
+            string packageName)
+        {
+            return
+                _catalogClient.Catalog.GetPackage(accountName, databaseName, schemaName, packageName);
+        }
+
+        private IList<USqlPackage> GetPackages(string accountName, string databaseName,
+            string schemaName)
+        {
+            List<USqlPackage> toReturn = new List<USqlPackage>();
+            var response = _catalogClient.Catalog.ListPackages(accountName, databaseName, schemaName);
+            toReturn.AddRange(response);
+            while (!string.IsNullOrEmpty(response.NextPageLink))
+            {
+                response = _catalogClient.Catalog.ListPackagesNext(response.NextPageLink);
                 toReturn.AddRange(response);
             }
 
@@ -961,38 +1154,49 @@ namespace Microsoft.Azure.Commands.DataLakeAnalytics.Models
         }
 
         public List<JobInformation> ListJobs(string accountName, string filter, int? top,
-            int? skip)
+            int? skip, string orderBy, out bool moreJobs)
         {
+            moreJobs = false;
+            // top is used to return a total number, not top per page.
+            if (!top.HasValue)
+            {
+                top = 500;
+            }
+
             var parameters = new ODataQuery<JobInformation>
             {
                 Filter = filter,
-                Top = top,
-                Skip = skip
+                Skip = skip,
+                OrderBy = orderBy
             };
 
             var jobList = new List<JobInformation>();
             var response = _jobClient.Job.List(accountName, parameters);
-
+            var curCount = 0;
             jobList.AddRange(response);
-            while (!string.IsNullOrEmpty(response.NextPageLink))
+            curCount = jobList.Count();
+            while (!string.IsNullOrEmpty(response.NextPageLink) && curCount <= top.Value)
             {
                 response = ListJobsWithNextLink(response.NextPageLink);
                 jobList.AddRange(response);
+                curCount = jobList.Count();
             }
 
-            return jobList;
+            
+            if (curCount > top.Value || !string.IsNullOrEmpty(response.NextPageLink))
+            {
+                moreJobs = true;
+                
+            }
+
+            // return only the jobs requested if there are fewer than top.
+            return jobList.GetRange(0, Math.Min(curCount, top.Value));
         }
 
         #endregion
 
-        #region private helpers
-
-        private IPage<JobInformation> ListJobsWithNextLink(string nextLink)
-        {
-            return _jobClient.Job.ListNext(nextLink);
-        }
-
-        private string GetResourceGroupByAccountName(string accountName)
+        #region internal helpers
+        internal string GetResourceGroupByAccountName(string accountName)
         {
             try
             {
@@ -1010,6 +1214,50 @@ namespace Microsoft.Azure.Commands.DataLakeAnalytics.Models
                 throw new CloudException(string.Format(Properties.Resources.FailedToDiscoverResourceGroup, accountName,
                     _subscriptionId));
             }
+        }
+
+        internal string GetWildcardFilterString(string propertyName, string value)
+        {
+            if (!value.Contains("*"))
+            {
+                // no wildcards, return an equal
+                return string.Format("{0} eq '{1}'", propertyName, value);
+            }
+
+            var subStrings = value.Split('*');
+            if(subStrings.Length != 2)
+            {
+                throw new InvalidOperationException("Exactly one wildcard ('*') character is supported for expansion. Please remove extra wildcards and try again");
+            }
+
+            if(string.IsNullOrEmpty(subStrings[0]))
+            {
+                // only ends with required
+                return string.Format("endswith({0},'{1}')", propertyName, subStrings[1]);
+            }
+
+            if(string.IsNullOrEmpty(subStrings[1]))
+            {
+                // only starts with
+                return string.Format("startswith({0},'{1}')", propertyName, subStrings[0]);
+            }
+
+
+            // default case requires both
+            return string.Format("startswith({0},'{1}') and endswith({0},'{2}')", propertyName, subStrings[0], subStrings[1]);
+        }
+        #endregion
+
+        #region private helpers
+
+        private IPage<JobInformation> ListJobsWithNextLink(string nextLink)
+        {
+            return _jobClient.Job.ListNext(nextLink);
+        }
+
+        private IPage<FirewallRule> ListFirewallRulesWithNextLink(string nextLink)
+        {
+            return _accountClient.FirewallRules.ListByAccountNext(nextLink);
         }
 
         private bool IsCatalogItemOrList(CatalogPathInstance path, DataLakeAnalyticsEnums.CatalogItemType type)
@@ -1047,11 +1295,9 @@ namespace Microsoft.Azure.Commands.DataLakeAnalytics.Models
                     }
 
                     break;
-                case DataLakeAnalyticsEnums.CatalogItemType.Table:
-                case DataLakeAnalyticsEnums.CatalogItemType.TableValuedFunction:
-                case DataLakeAnalyticsEnums.CatalogItemType.View:
                 case DataLakeAnalyticsEnums.CatalogItemType.Procedure:
                 case DataLakeAnalyticsEnums.CatalogItemType.Types:
+                case DataLakeAnalyticsEnums.CatalogItemType.Package:
                     if (string.IsNullOrEmpty(path.DatabaseName) ||
                         string.IsNullOrEmpty(path.SchemaAssemblyOrExternalDataSourceName))
                     {
@@ -1065,7 +1311,24 @@ namespace Microsoft.Azure.Commands.DataLakeAnalytics.Models
                     }
 
                     break;
-                case DataLakeAnalyticsEnums.CatalogItemType.TableStatistics:
+
+                case DataLakeAnalyticsEnums.CatalogItemType.Table:
+                case DataLakeAnalyticsEnums.CatalogItemType.TableValuedFunction:
+                case DataLakeAnalyticsEnums.CatalogItemType.View:
+                    if (string.IsNullOrEmpty(path.DatabaseName))
+                    {
+                        throw new CloudException(string.Format(Properties.Resources.InvalidCatalogPath,
+                            path.FullCatalogItemPath));
+                    }
+
+                    if (string.IsNullOrEmpty(path.TableOrTableValuedFunctionName) ||
+                        string.IsNullOrEmpty(path.SchemaAssemblyOrExternalDataSourceName))
+                    {
+                        isList = true;
+                    }
+
+                    break;
+
                 case DataLakeAnalyticsEnums.CatalogItemType.TablePartition:
                     if (string.IsNullOrEmpty(path.DatabaseName) ||
                         string.IsNullOrEmpty(path.SchemaAssemblyOrExternalDataSourceName) ||
@@ -1076,6 +1339,20 @@ namespace Microsoft.Azure.Commands.DataLakeAnalytics.Models
                     }
 
                     if (string.IsNullOrEmpty(path.TableStatisticsOrPartitionName))
+                    {
+                        isList = true;
+                    }
+                    break;
+
+                case DataLakeAnalyticsEnums.CatalogItemType.TableStatistics:
+                    if (string.IsNullOrEmpty(path.DatabaseName))
+                    {
+                        throw new CloudException(string.Format(Properties.Resources.InvalidCatalogPath,
+                            path.FullCatalogItemPath));
+                    }
+
+                    if (string.IsNullOrEmpty(path.TableStatisticsOrPartitionName) ||
+                        string.IsNullOrEmpty(path.SchemaAssemblyOrExternalDataSourceName))
                     {
                         isList = true;
                     }

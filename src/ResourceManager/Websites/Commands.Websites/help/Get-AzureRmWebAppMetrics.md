@@ -1,5 +1,6 @@
 ---
 external help file: Microsoft.Azure.Commands.Websites.dll-Help.xml
+ms.assetid: 513BE097-EB4A-4C49-9F7F-42A2BED09022
 online version: 
 schema: 2.0.0
 ---
@@ -7,19 +8,20 @@ schema: 2.0.0
 # Get-AzureRmWebAppMetrics
 
 ## SYNOPSIS
+Gets Azure Web App metrics.
 
 ## SYNTAX
 
 ### S1
 ```
 Get-AzureRmWebAppMetrics [-Metrics] <String[]> [-StartTime] <DateTime> [[-EndTime] <DateTime>]
- [-Granularity] <String> [-InstanceDetails] [-ResourceGroupName] <String> [-Name] <String>
+ [-Granularity] <String> [-InstanceDetails] [-ResourceGroupName] <String> [-Name] <String> [<CommonParameters>]
 ```
 
 ### S2
 ```
 Get-AzureRmWebAppMetrics [-Metrics] <String[]> [-StartTime] <DateTime> [[-EndTime] <DateTime>]
- [-Granularity] <String> [-InstanceDetails] [-WebApp] <Site>
+ [-Granularity] <String> [-InstanceDetails] [-WebApp] <Site> [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -59,6 +61,7 @@ Granularity
 Type: String
 Parameter Sets: (All)
 Aliases: 
+Accepted values: PT1M, PT1H, P1D
 
 Required: True
 Position: 5
@@ -157,6 +160,9 @@ Accept pipeline input: True (ByValue)
 Accept wildcard characters: False
 ```
 
+### CommonParameters
+This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable, -InformationAction, -InformationVariable, -OutVariable, -OutBuffer, -PipelineVariable, -Verbose, -WarningAction, and -WarningVariable. For more information, see about_CommonParameters (http://go.microsoft.com/fwlink/?LinkID=113216).
+
 ## INPUTS
 
 ## OUTPUTS
@@ -164,4 +170,6 @@ Accept wildcard characters: False
 ## NOTES
 
 ## RELATED LINKS
+
+[Get-AzureRmWebAppCertificate](./Get-AzureRmWebAppCertificate.md)
 

@@ -10,8 +10,6 @@
 
 namespace Microsoft.Azure.Commands.KeyVault.Properties {
     using System;
-    
-    
     /// <summary>
     ///   A strongly-typed resource class, for looking up localized strings, etc.
     /// </summary>
@@ -109,6 +107,15 @@ namespace Microsoft.Azure.Commands.KeyVault.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The &apos;all&apos; permission is being deprecated and does not include the &apos;purge&apos; permission. &apos;Purge&apos; permission must be explicitly set..
+        /// </summary>
+        internal static string AllPermissionExpansionWarning {
+            get {
+                return ResourceManager.GetString("AllPermissionExpansionWarning", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to No account found in the context. Please login using Login-AzureRMAccount..
         /// </summary>
         internal static string ArmAccountNotFound {
@@ -141,6 +148,33 @@ namespace Microsoft.Azure.Commands.KeyVault.Properties {
         internal static string BackupKeyFileNotFound {
             get {
                 return ResourceManager.GetString("BackupKeyFileNotFound", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Backup secret.
+        /// </summary>
+        internal static string BackupSecret {
+            get {
+                return ResourceManager.GetString("BackupSecret", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The backup secret file &apos;{0}&apos; already exists..
+        /// </summary>
+        internal static string BackupSecretFileAlreadyExists {
+            get {
+                return ResourceManager.GetString("BackupSecretFileAlreadyExists", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Cannot find backup secret file &apos;{0}&apos;.
+        /// </summary>
+        internal static string BackupSecretFileNotFound {
+            get {
+                return ResourceManager.GetString("BackupSecretFileNotFound", resourceCulture);
             }
         }
         
@@ -195,6 +229,33 @@ namespace Microsoft.Azure.Commands.KeyVault.Properties {
         internal static string CreateKeyVault {
             get {
                 return ResourceManager.GetString("CreateKeyVault", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Cannot find deleted vault &apos;{0}&apos; in location &apos;{1}&apos;.
+        /// </summary>
+        internal static string DeletedVaultNotFound {
+            get {
+                return ResourceManager.GetString("DeletedVaultNotFound", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Overwrite File ?.
+        /// </summary>
+        internal static string FileOverwriteCaption {
+            get {
+                return ResourceManager.GetString("FileOverwriteCaption", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Overwrite existing file at &apos;{0}&apos; ?.
+        /// </summary>
+        internal static string FileOverwriteMessage {
+            get {
+                return ResourceManager.GetString("FileOverwriteMessage", resourceCulture);
             }
         }
         
@@ -312,6 +373,15 @@ namespace Microsoft.Azure.Commands.KeyVault.Properties {
         internal static string InvalidNumberOfCertificates {
             get {
                 return ResourceManager.GetString("InvalidNumberOfCertificates", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Cannot parse ObjectId into Guid..
+        /// </summary>
+        internal static string InvalidObjectIdSyntax {
+            get {
+                return ResourceManager.GetString("InvalidObjectIdSyntax", resourceCulture);
             }
         }
         
@@ -442,6 +512,51 @@ namespace Microsoft.Azure.Commands.KeyVault.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Are you sure you want to remove vault &apos;{0}&apos; forever..
+        /// </summary>
+        internal static string PurgeVaultWarning {
+            get {
+                return ResourceManager.GetString("PurgeVaultWarning", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Purge vault.
+        /// </summary>
+        internal static string PurgeVaultWhatIfMessage {
+            get {
+                return ResourceManager.GetString("PurgeVaultWhatIfMessage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Recover key.
+        /// </summary>
+        internal static string RecoverKey {
+            get {
+                return ResourceManager.GetString("RecoverKey", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Recover secret.
+        /// </summary>
+        internal static string RecoverSecret {
+            get {
+                return ResourceManager.GetString("RecoverSecret", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Recover vault.
+        /// </summary>
+        internal static string RecoverVault {
+            get {
+                return ResourceManager.GetString("RecoverVault", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Remove certificate contact.
         /// </summary>
         internal static string RemoveCertificateContact {
@@ -483,6 +598,42 @@ namespace Microsoft.Azure.Commands.KeyVault.Properties {
         internal static string RemoveCertWhatIfMessage {
             get {
                 return ResourceManager.GetString("RemoveCertWhatIfMessage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Are you sure you want to purge key &apos;{0}&apos;..
+        /// </summary>
+        internal static string RemoveDeletedKeyWarning {
+            get {
+                return ResourceManager.GetString("RemoveDeletedKeyWarning", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Purge key.
+        /// </summary>
+        internal static string RemoveDeletedKeyWhatIfMessage {
+            get {
+                return ResourceManager.GetString("RemoveDeletedKeyWhatIfMessage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Are you sure you want to purge secret &apos;{0}&apos;..
+        /// </summary>
+        internal static string RemoveDeletedSecretWarning {
+            get {
+                return ResourceManager.GetString("RemoveDeletedSecretWarning", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Purge secret.
+        /// </summary>
+        internal static string RemoveDeletedSecretWhatIfMessage {
+            get {
+                return ResourceManager.GetString("RemoveDeletedSecretWhatIfMessage", resourceCulture);
             }
         }
         
@@ -555,6 +706,15 @@ namespace Microsoft.Azure.Commands.KeyVault.Properties {
         internal static string RestoreKey {
             get {
                 return ResourceManager.GetString("RestoreKey", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Restore secret.
+        /// </summary>
+        internal static string RestoreSecret {
+            get {
+                return ResourceManager.GetString("RestoreSecret", resourceCulture);
             }
         }
         

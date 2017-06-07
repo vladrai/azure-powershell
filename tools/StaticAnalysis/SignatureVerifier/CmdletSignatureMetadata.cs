@@ -71,7 +71,6 @@ namespace StaticAnalysis.SignatureVerifier
             VerbsCommon.New,
             VerbsCommon.Optimize,
             VerbsData.Publish,
-            VerbsDiagnostic.Resolve,
             VerbsData.Save,
             VerbsData.Sync,
             VerbsCommon.Switch,
@@ -118,9 +117,9 @@ namespace StaticAnalysis.SignatureVerifier
         #endregion
 
         #region ApprovedVerbs
-        private List<string> ApprovedVerbs;
+        private static List<string> ApprovedVerbs;
 
-        private List<string> GetApprovedVerbs()
+        private static List<string> GetApprovedVerbs()
         {
             if (ApprovedVerbs == null)
             {
@@ -139,6 +138,48 @@ namespace StaticAnalysis.SignatureVerifier
 
             return ApprovedVerbs;
         }
+        #endregion
+
+        #region SingularNouns
+        private static readonly List<string> SingularNouns = new List<string>
+        {
+            "Access",
+            "Address",
+            "Anonymous",
+            "Diagnostics",
+            "Express",
+            "Https",
+            "InBytes",
+            "InDays",
+            "InHours",
+            "InMinutes",
+            "InMonths",
+            "InSeconds",
+            "Loss",
+            "Mbps",
+            "Process",
+            "Progress",
+            "SaveAs",
+            "Statistics",
+            "Status",
+            "Success",
+            "Vmss"
+        };
+
+        public List<ParameterMetadata> GetParametersWithPluralNoun()
+        {
+            List<ParameterMetadata> pluralParameters = new List<ParameterMetadata>();
+            foreach (var parameter in _parameters)
+            {
+                if (parameter.Name.EndsWith("s") && SingularNouns.Find(n => parameter.Name.EndsWith(n)) == null)
+                {
+                    pluralParameters.Add(parameter);
+                }
+            }
+
+            return pluralParameters;
+        }
+
         #endregion
 
         /// <summary>
@@ -183,6 +224,14 @@ namespace StaticAnalysis.SignatureVerifier
         public bool IsApprovedVerb
         {
             get { return VerbName != null && GetApprovedVerbs().Contains(VerbName); }
+        }
+
+        /// <summary>
+        /// True if the cmdlet has a singular noun
+        /// </summary>
+        public bool HasSingularNoun
+        {
+            get { return !NounName.EndsWith("s") || SingularNouns.Find(n => NounName.EndsWith(n)) != null; }
         }
 
         /// <summary>

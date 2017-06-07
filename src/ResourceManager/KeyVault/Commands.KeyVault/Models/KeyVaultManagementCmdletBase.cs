@@ -14,6 +14,7 @@
 
 using Microsoft.Azure.ActiveDirectory.GraphClient;
 using Microsoft.Azure.Commands.Common.Authentication;
+using Microsoft.Azure.Commands.Common.Authentication.Abstractions;
 using Microsoft.Azure.Commands.Common.Authentication.Models;
 using Microsoft.Azure.Commands.KeyVault.Models;
 using Microsoft.Azure.Commands.ResourceManager.Common;
@@ -24,10 +25,14 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Threading.Tasks;
 using PSKeyVaultModels = Microsoft.Azure.Commands.KeyVault.Models;
 using PSKeyVaultProperties = Microsoft.Azure.Commands.KeyVault.Properties;
 using PSResourceManagerModels = Microsoft.Azure.Commands.Resources.Models;
+using KeyPerms = Microsoft.Azure.Management.KeyVault.Models.KeyPermissions;
+using SecretPerms = Microsoft.Azure.Management.KeyVault.Models.SecretPermissions;
+using CertPerms = Microsoft.Azure.Management.KeyVault.Models.CertificatePermissions;
 
 namespace Microsoft.Azure.Commands.KeyVault
 {
@@ -58,9 +63,9 @@ namespace Microsoft.Azure.Commands.KeyVault
             {
                 if (_activeDirectoryClient == null)
                 {
-                    _dataServiceCredential = new DataServiceCredential(AzureSession.AuthenticationFactory, DefaultProfile.Context, AzureEnvironment.Endpoint.Graph);
+                    _dataServiceCredential = new DataServiceCredential(AzureSession.Instance.AuthenticationFactory, DefaultProfile.DefaultContext, AzureEnvironment.Endpoint.Graph);
                     _activeDirectoryClient = new ActiveDirectoryClient(new Uri(string.Format("{0}/{1}",
-                        DefaultProfile.Context.Environment.Endpoints[AzureEnvironment.Endpoint.Graph], _dataServiceCredential.TenantId)),
+                        DefaultProfile.DefaultContext.Environment.GetEndpoint(AzureEnvironment.Endpoint.Graph), _dataServiceCredential.TenantId)),
                         () => Task.FromResult(_dataServiceCredential.GetToken()));
                 }
                 return this._activeDirectoryClient;
@@ -152,7 +157,7 @@ namespace Microsoft.Azure.Commands.KeyVault
         // exist in that resource group, we would end up having the Key Vault service decrypt the vault for us.
         // This is a heavy operation and not required here.
         //
-        // An alternate implementation that checks for the vault name globally would be to construct a vault 
+        // An alternate implementation that checks for the vault name globally would be to construct a vault
         // URL with the given name and attempt checking DNS entries for it.
         protected bool VaultExistsInCurrentSubscription(string name)
         {
@@ -161,15 +166,15 @@ namespace Microsoft.Azure.Commands.KeyVault
 
         protected Guid GetTenantId()
         {
-            if (DefaultContext.Tenant == null || DefaultContext.Tenant.Id == Guid.Empty)
+            if (DefaultContext.Tenant == null || DefaultContext.Tenant.GetId() == Guid.Empty)
             {
                 throw new InvalidOperationException(PSKeyVaultProperties.Resources.InvalidAzureEnvironment);
             }
 
-            return DefaultContext.Tenant.Id;
+            return DefaultContext.Tenant.GetId();
         }
 
-        protected Guid GetCurrentUsersObjectId()
+        protected string GetCurrentUsersObjectId()
         {
             if (DefaultContext.Subscription == null)
                 throw new InvalidOperationException(PSKeyVaultProperties.Resources.InvalidSelectedSubscription);
@@ -180,62 +185,122 @@ namespace Microsoft.Azure.Commands.KeyVault
 
             return GetObjectId(
                     upn: DefaultContext.Account.Id,
-                    objectId: Guid.Empty,
+                    objectId: string.Empty,
                     spn: null
                     );
         }
 
-        protected Guid GetObjectId(Guid objectId, string upn, string spn)
+        protected string GetObjectId(string objectId, string upn, string spn)
         {
-            Guid objId = Guid.Empty;
-            string objectFilter = objectId.ToString();
+            var objId = string.Empty;
+            var objectFilter = objectId ?? string.Empty;
 
             if (!string.IsNullOrWhiteSpace(upn))
             {
                 objectFilter = upn;
-                var user = ActiveDirectoryClient.Users.Where(u =>
-                        u.UserPrincipalName.Equals(upn) || u.Mail.Equals(upn) || u.OtherMails.Any(m => m.Equals(upn))).
-                        ExecuteAsync().GetAwaiter().GetResult().CurrentPage.FirstOrDefault();
+                var user = ActiveDirectoryClient.Users.Where(FilterByUpn(upn)).ExecuteAsync().GetAwaiter().GetResult().CurrentPage.FirstOrDefault();
                 if (user != null)
-                    objId = Guid.Parse(user.ObjectId);
+                    objId = user.ObjectId;
             }
             else if (!string.IsNullOrWhiteSpace(spn))
             {
                 objectFilter = spn;
                 var servicePrincipal = ActiveDirectoryClient.ServicePrincipals.Where(s =>
-                    s.ServicePrincipalNames.Any(n => n.Equals(spn)))
+                    s.ServicePrincipalNames.Any(n => n.Equals(spn, StringComparison.OrdinalIgnoreCase)))
                     .ExecuteAsync().GetAwaiter().GetResult().CurrentPage.FirstOrDefault();
                 if (servicePrincipal != null)
-                    objId = Guid.Parse(servicePrincipal.ObjectId);
+                    objId = servicePrincipal.ObjectId;
             }
-            else if (objectId != Guid.Empty)
+            else if (!string.IsNullOrWhiteSpace(objectId))
             {
-                var objectCollection = ActiveDirectoryClient.GetObjectsByObjectIdsAsync(new[] { objectId.ToString() }, new string[] { }).GetAwaiter().GetResult();
+                var objectCollection = ActiveDirectoryClient.GetObjectsByObjectIdsAsync(new[] { objectId }, new string[] { }).GetAwaiter().GetResult();
                 if (objectCollection.Any())
                     objId = objectId;
             }
 
-            if (objId != Guid.Empty)
+            if (!string.IsNullOrWhiteSpace(objId))
                 return objId;
 
             throw new ArgumentException(string.Format(PSKeyVaultProperties.Resources.ADObjectNotFound, objectFilter,
                 (_dataServiceCredential != null) ? _dataServiceCredential.TenantId : string.Empty));
         }
 
+        /// <summary>
+        /// Determines whether or not the given object ID has valid syntax.
+        /// This does not validate whether or not the object ID is actually present in the Graph DB.
+        /// </summary>
+        /// <param name="objectId">The object ID whose syntax is to be validated.</param>
+        /// <returns>True iff the given object ID has valid syntax.</returns>
+        protected bool IsValidObjectIdSyntax(string objectId)
+        {
+            if (string.IsNullOrWhiteSpace(objectId))
+            {
+                return false;
+            }
+
+            // In ADFS, object IDs have no additional syntax restrictions.
+            if (DefaultProfile.DefaultContext.Environment.OnPremise)
+            {
+                return true;
+            }
+
+            // In AAD, object IDs must be parsable as Guids.
+            Guid dummyValue;
+            return Guid.TryParse(objectId, out dummyValue);
+        }
+
+        private Expression<Func<IUser, bool>> FilterByUpn(string upn)
+        {
+            // In ADFS, Graph cannot handle this particular combination of filters.
+            if (!DefaultProfile.DefaultContext.Environment.OnPremise)
+            {
+                return u => u.UserPrincipalName.Equals(upn, StringComparison.OrdinalIgnoreCase) ||
+                    u.Mail.Equals(upn, StringComparison.OrdinalIgnoreCase) ||
+                    u.OtherMails.Any(m => m.Equals(upn, StringComparison.OrdinalIgnoreCase));
+            }
+
+            return u => u.UserPrincipalName.Equals(upn, StringComparison.OrdinalIgnoreCase);
+        }
+
         protected readonly string[] DefaultPermissionsToKeys =
         {
-            "get",
-            "create",
-            "delete",
-            "list",
-            "update",
-            "import",
-            "backup",
-            "restore"
+            KeyPerms.Get,
+            KeyPerms.Create,
+            KeyPerms.Delete,
+            KeyPerms.List,
+            KeyPerms.Update,
+            KeyPerms.Import,
+            KeyPerms.Backup,
+            KeyPerms.Restore,
+            KeyPerms.Recover
         };
 
-        protected readonly string[] DefaultPermissionsToSecrets = { "all" };
-        protected readonly string[] DefaultPermissionsToCertificates = { "all" };
+        protected readonly string[] DefaultPermissionsToSecrets = 
+        {
+            SecretPerms.Get,
+            SecretPerms.List,
+            SecretPerms.Set,
+            SecretPerms.Delete,
+            SecretPerms.Backup,
+            SecretPerms.Restore,
+            SecretPerms.Recover
+        };
+
+        protected readonly string[] DefaultPermissionsToCertificates = 
+        {
+            CertPerms.Get,
+            CertPerms.Delete,
+            CertPerms.List,
+            CertPerms.Create,
+            CertPerms.Import,
+            CertPerms.Update,
+            CertPerms.Deleteissuers,
+            CertPerms.Getissuers,
+            CertPerms.Listissuers,
+            CertPerms.Managecontacts,
+            CertPerms.Manageissuers,
+            CertPerms.Setissuers
+        };
         protected readonly string DefaultSkuFamily = "A";
         protected readonly string DefaultSkuName = "Standard";
     }

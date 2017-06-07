@@ -40,7 +40,6 @@ namespace Microsoft.Azure.Commands.AnalysisServices.Test.ScenarioTests
         private LegacyTest.CSMTestEnvironmentFactory csmTestFactory;
         private EnvironmentSetupHelper helper;
         private const string AuthorizationApiVersion = "2014-07-01-preview";
-        internal const string resourceGroupLocation = "West US";
 
         public ResourceManagementClient ResourceManagementClient { get; private set; }
 
@@ -117,7 +116,7 @@ namespace Microsoft.Azure.Commands.AnalysisServices.Test.ScenarioTests
                                         .Split(new[] { "." }, StringSplitOptions.RemoveEmptyEntries)
                                         .Last();
                 helper.SetupModules(AzureModule.AzureResourceManager, "ScenarioTests\\Common.ps1", "ScenarioTests\\" + callingClassName + ".ps1",
-                helper.RMProfileModule, helper.RMResourceModule, helper.GetRMModulePath(@"AzureRM.AnalysisServices.psd1"), "AzureRM.Resources.ps1");
+                helper.RMProfileModule, helper.RMResourceModule, helper.GetRMModulePath(@"AzureRM.AnalysisServices.psd1"), helper.GetRMModulePath(@"Azure.AnalysisServices.psd1"), "AzureRM.Resources.ps1");
 
                 try
                 {

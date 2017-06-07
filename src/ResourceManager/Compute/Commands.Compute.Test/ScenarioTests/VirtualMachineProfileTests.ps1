@@ -66,7 +66,7 @@ function Test-VirtualMachineProfile
     $p = Add-AzureRmVMDataDisk -VM $p -Name 'testDataDisk3' -Caching 'ReadOnly' -DiskSizeInGB $null -Lun 2 -VhdUri $dataDiskVhdUri3 -CreateOption Empty;
     Assert-Null $p.StorageProfile.DataDisks[2].DiskSizeGB;
     $p = Remove-AzureRmVMDataDisk -VM $p -Name 'testDataDisk3';
-        
+
     Assert-AreEqual $p.StorageProfile.OSDisk.Caching $osDiskCaching;
     Assert-AreEqual $p.StorageProfile.OSDisk.Name $osDiskName;
     Assert-AreEqual $p.StorageProfile.OSDisk.Vhd.Uri $osDiskVhdUri;
@@ -128,6 +128,30 @@ function Test-VirtualMachineProfile
 
     $certStore2 = "My2";
     $certUrl2 =  "https://testvault123.vault.azure.net/secrets/Test1/514ceb769c984379a7e0230bddaaaaaa";
+    $p = Add-AzureRmVMSecret -VM $p -SourceVaultId $referenceUri -CertificateStore $certStore2 -CertificateUrl $certUrl2;
+
+    Assert-AreEqual 2 $p.OSProfile.Secrets.Count;
+    Assert-AreEqual $p.OSProfile.Secrets[0].SourceVault.Id $referenceUri;
+    Assert-AreEqual $p.OSProfile.Secrets[0].VaultCertificates[0].CertificateStore $certStore;
+    Assert-AreEqual $p.OSProfile.Secrets[0].VaultCertificates[0].CertificateUrl $certUrl;
+    Assert-AreEqual $p.OSProfile.Secrets[0].SourceVault.Id $referenceUri;
+    Assert-AreEqual $p.OSProfile.Secrets[0].VaultCertificates[1].CertificateStore $certStore2;
+    Assert-AreEqual $p.OSProfile.Secrets[0].VaultCertificates[1].CertificateUrl $certUrl2;
+    Assert-AreEqual $p.OSProfile.Secrets[1].SourceVault.Id $referenceUri2;
+    Assert-AreEqual $p.OSProfile.Secrets[1].VaultCertificates[0].CertificateStore $certStore;
+    Assert-AreEqual $p.OSProfile.Secrets[1].VaultCertificates[0].CertificateUrl $certUrl;
+
+    $p = Remove-AzureRmVMSecret -VM $p -SourceVaultId $referenceUri;
+    Assert-AreEqual 1 $p.OSProfile.Secrets.Count;
+    Assert-AreEqual $p.OSProfile.Secrets[0].SourceVault.Id $referenceUri2;
+    Assert-AreEqual $p.OSProfile.Secrets[0].VaultCertificates[0].CertificateStore $certStore;
+    Assert-AreEqual $p.OSProfile.Secrets[0].VaultCertificates[0].CertificateUrl $certUrl;
+
+    $p = Remove-AzureRmVMSecret -VM $p;
+    Assert-AreEqual 0 $p.OSProfile.Secrets.Count;
+
+    $p = Add-AzureRmVMSecret -VM $p -SourceVaultId $referenceUri -CertificateStore $certStore -CertificateUrl $certUrl;
+    $p = Add-AzureRmVMSecret -VM $p -SourceVaultId $referenceUri2 -CertificateStore $certStore -CertificateUrl $certUrl;
     $p = Add-AzureRmVMSecret -VM $p -SourceVaultId $referenceUri -CertificateStore $certStore2 -CertificateUrl $certUrl2;
 
     $aucSetting = "AutoLogon";

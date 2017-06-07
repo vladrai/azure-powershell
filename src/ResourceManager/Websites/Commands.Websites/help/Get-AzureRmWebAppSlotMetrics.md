@@ -1,5 +1,6 @@
 ---
 external help file: Microsoft.Azure.Commands.Websites.dll-Help.xml
+ms.assetid: 3BCEADF3-15DC-4033-A94A-4C8B4F5E7340
 online version: 
 schema: 2.0.0
 ---
@@ -7,6 +8,7 @@ schema: 2.0.0
 # Get-AzureRmWebAppSlotMetrics
 
 ## SYNOPSIS
+Gets metrics for an Azure Web App slot.
 
 ## SYNTAX
 
@@ -14,12 +16,13 @@ schema: 2.0.0
 ```
 Get-AzureRmWebAppSlotMetrics [-Metrics] <String[]> [-StartTime] <DateTime> [[-EndTime] <DateTime>]
  [-Granularity] <String> [-InstanceDetails] [-ResourceGroupName] <String> [-Name] <String> [-Slot] <String>
+ [<CommonParameters>]
 ```
 
 ### S2
 ```
 Get-AzureRmWebAppSlotMetrics [-Metrics] <String[]> [-StartTime] <DateTime> [[-EndTime] <DateTime>]
- [-Granularity] <String> [-InstanceDetails] [-WebApp] <Site>
+ [-Granularity] <String> [-InstanceDetails] [-WebApp] <Site> [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -172,6 +175,9 @@ Accept pipeline input: True (ByValue)
 Accept wildcard characters: False
 ```
 
+### CommonParameters
+This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable, -InformationAction, -InformationVariable, -OutVariable, -OutBuffer, -PipelineVariable, -Verbose, -WarningAction, and -WarningVariable. For more information, see about_CommonParameters (http://go.microsoft.com/fwlink/?LinkID=113216).
+
 ## INPUTS
 
 ## OUTPUTS
@@ -180,3 +186,8 @@ Accept wildcard characters: False
 
 ## RELATED LINKS
 
+[Get-AzureRMAppServicePlanMetrics](./Get-AzureRmAppServicePlanMetrics.md)
+
+[Get-AzureRmWebApp](./Get-AzureRmWebApp.md)
+
+[Get-AzureRMWebAppSlot](./Get-AzureRMWebAppSlot.md)

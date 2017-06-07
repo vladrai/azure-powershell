@@ -18,6 +18,23 @@
         - Additional information about change #1
 -->
 ## Current Release
+
+## Version 0.14.1
+
+## Version 0.14.0
+* Consume new version of Azure Machine Learning .Net SDK and add a new cmdlet
+    - Add-AzureRmMlWebServiceRegionalProperty 
+* Minor wording fixes in help text.
+
+## Version 0.13.0
+
+## Version 0.12.0
+
+## Version 0.11.4
+
+## Version 0.11.3
+
+## Version 0.11.2
 * Serialization and deserialization improvements for all cmdlets
 
 ## Version 0.11.1

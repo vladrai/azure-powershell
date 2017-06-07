@@ -14,6 +14,7 @@
 
 using AutoMapper;
 using Microsoft.Azure.Commands.Common.Authentication;
+using Microsoft.Azure.Commands.Common.Authentication.Abstractions;
 using Microsoft.Azure.Commands.Common.Authentication.Models;
 using Microsoft.Azure.Commands.Compute.Common;
 using Microsoft.Azure.Commands.Compute.Models;
@@ -112,13 +113,11 @@ namespace Microsoft.Azure.Commands.Compute
                         Tags = this.Tags != null ? this.Tags.ToDictionary() : this.VM.Tags
                     };
 
-                    var op = this.VirtualMachineClient.CreateOrUpdateWithHttpMessagesAsync(
+                    var result = this.VirtualMachineClient.CreateOrUpdateWithHttpMessagesAsync(
                         this.ResourceGroupName,
                         this.VM.Name,
-                        parameters);
-                    var wait = op.GetAwaiter();
-                    var resultop = wait.GetResult();
-                    var result = Mapper.Map<PSAzureOperationResponse>(resultop);
+                        parameters).GetAwaiter().GetResult();
+                    var psResult = Mapper.Map<PSAzureOperationResponse>(result);
 
                     if (!(this.DisableBginfoExtension.IsPresent || IsLinuxOs()))
                     {
@@ -145,10 +144,10 @@ namespace Microsoft.Azure.Commands.Compute
                                 this.VM.Name,
                                 VirtualMachineBGInfoExtensionContext.ExtensionDefaultName,
                                 extensionParameters).GetAwaiter().GetResult();
-                            result = Mapper.Map<PSAzureOperationResponse>(op2);
+                            psResult = Mapper.Map<PSAzureOperationResponse>(op2);
                         }
                     }
-                    WriteObject(result);
+                    WriteObject(psResult);
                 });
             }
         }
@@ -224,7 +223,7 @@ namespace Microsoft.Azure.Commands.Compute
         {
             var storageAccountName = GetStorageAccountNameFromStorageProfile();
             var storageClient =
-                    AzureSession.ClientFactory.CreateArmClient<StorageManagementClient>(DefaultProfile.Context,
+                    AzureSession.Instance.ClientFactory.CreateArmClient<StorageManagementClient>(DefaultProfile.DefaultContext,
                         AzureEnvironment.Endpoint.ResourceManager);
 
             if (!string.IsNullOrEmpty(storageAccountName))

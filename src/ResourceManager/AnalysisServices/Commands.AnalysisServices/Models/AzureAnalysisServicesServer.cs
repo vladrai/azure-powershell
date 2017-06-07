@@ -12,22 +12,16 @@
 // limitations under the License.
 // ----------------------------------------------------------------------------------
 
-using Microsoft.Azure.Commands.Common.Authentication.Models;
-using Microsoft.Azure.Commands.Common.Authentication.Properties;
-using Microsoft.Azure.Commands.ResourceManager.Common.Tags;
-using Microsoft.Azure.Management.Analysis;
 using Microsoft.Azure.Management.Analysis.Models;
-using Microsoft.Rest.Azure;
-using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Net;
 
 namespace Microsoft.Azure.Commands.AnalysisServices.Models
 {
     public class AzureAnalysisServicesServer
     {
         public List<string> AsAdministrators { get; set; }
+
+        public string State { get; private set; }
 
         public string ProvisioningState { get; private set; }
 
@@ -60,6 +54,7 @@ namespace Microsoft.Azure.Commands.AnalysisServices.Models
                 Location = server.Location,
                 Name = server.Name,
                 Type = server.Type,
+                State = server.State,
                 ProvisioningState = server.ProvisioningState,
                 Id = server.Id,
                 ServerFullName = server.ServerFullName,

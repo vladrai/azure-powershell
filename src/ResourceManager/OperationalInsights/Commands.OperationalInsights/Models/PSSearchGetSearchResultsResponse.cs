@@ -24,14 +24,18 @@ namespace Microsoft.Azure.Commands.OperationalInsights.Models
         {
         }
 
-        public PSSearchGetSearchResultsResponse(SearchGetSearchResultsResponse response)
+        public PSSearchGetSearchResultsResponse(SearchResultsResponse response)
         {
             if (response != null)
             {
                 this.Id = response.Id;
                 this.Metadata = new PSSearchMetadata(response.Metadata);
                 this.Value = response.Value;
-                this.Error = new PSSearchError(response.Error);
+
+                if (response.Error != null)
+                {
+                    this.Error = new PSSearchError(response.Error);
+                }
             }
         }
         public string Id { get; set; }
